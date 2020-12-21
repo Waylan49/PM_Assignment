@@ -181,12 +181,3 @@ Here, we'll use our best model "model_rf_5" to make predictions with our test da
 pred_final<-predict(model_rf_5, test.data)
 pred_final$predictions
 ```
-
-
-
-
-
-
-
-
-
