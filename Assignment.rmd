@@ -1,0 +1,192 @@
+---
+title: "Prediction Assignment Writeup"
+author: "Weilun Chiu"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Getting data and data pre-processing
+
+First, we need to set the working directory and read the training data into our R. 
+```{r}
+setwd("C:/Users/Waylan/Desktop/ML_FP")
+original.train.data<-read.csv("pml-training.csv")
+```
+
+After reading the training data, we find there are several predictors with NA value, and some character varaibel we'd prefer it to be factor variable, so we use below code to pre-process it. 
+
+```{r}
+isna_logic<-sapply(original.train.data, anyNA)
+na.features<-names(original.train.data)[isna_logic]
+features<-setdiff(names(original.train.data), na.features)
+original.train.data_2<-original.train.data[, features]
+
+original.train.data_2$user_name<-as.factor(original.train.data_2$user_name)
+original.train.data_2$new_window<-as.factor(original.train.data_2$new_window)
+original.train.data_2$classe<-as.factor(original.train.data_2$classe)
+
+cha_logic<-sapply(original.train.data_2, is.character)
+cha_features<-names(original.train.data_2)[cha_logic]
+features2<-setdiff(names(original.train.data_2), cha_features)
+train.data<-original.train.data_2[, features2]
+train.data<-train.data[, c(-1)]
+```
+
+And then we do the same thing with our testing data. 
+```{r}
+original.test.data<-read.csv("pml-testing.csv")
+features3<-features2[1:(length(features2)-1)]
+original.test.data_2<-original.test.data[, features3]
+original.test.data_2$user_name<-as.factor(original.test.data_2$user_name)
+original.test.data_2$new_window<-as.factor(original.test.data_2$new_window)
+test.data<-original.test.data_2
+```
+
+
+## 2. Split our train data to training and validation purpose. 
+
+Before we start applying prediction models with our data, we'd like to have a seperate/independent validation data set to verify how accurate our models are, so we split our data with package caret
+```{r, message=FALSE}
+library(caret)
+set.seed(123)
+inTrain<-createDataPartition(train.data$classe, p=0.8, list=FALSE)
+training<-train.data[inTrain, ]
+testing<-train.data[-inTrain, ]
+```
+
+
+## 3. Construct prediction model
+#### 1. Naive Bayes
+First, we'll try to use Naive Bayes to see is it can accurately predicting the classes.
+And then use the model to make prediction with our testing data set and see how accurate the model is.
+
+```{r, message=FALSE}
+library("klaR")
+```
+```{r, warning=FALSE, cache=TRUE}
+set.seed(123)
+system.time(
+model_nb_1<-NaiveBayes(classe~., data=training)
+)
+pred_nb_1<-predict(model_nb_1, testing)
+round(confusionMatrix(testing$classe, pred_nb_1$class)$overall, 3)
+```
+
+From the result above, the model constructed by Naive Bayes only gets us accuracy rate around 49%. The model is worse than just randomly guessing the result. 
+
+#### 2. Decision Tree
+Second, we'll use the training data to construct a single decision tree and use it to do the prediction.
+And we also load package "rattle" in order to plot the result tree. 
+```{r, message=FALSE}
+library(rpart)
+```
+```{r, cache=TRUE}
+set.seed(123)
+system.time(
+model_dt_2<-rpart(classe~., data=training)
+)
+pred_dt_2<-predict(model_dt_2, testing, type="class")
+round(confusionMatrix(testing$classe, pred_dt_2)$overall, 3)
+```
+
+From above result, the single decision tree gives us around 85% accuracy. Behind the scenes, function rpart is  applying a range of cost complexity values to prune the decision tree. To compare the error for each value, rpart performs a 10-fold cross validation so that the error associated with a given value is computed on the hold-out validation data.
+
+```{r , fig.height = 5, fig.width = 5, fig.align = "center"}
+model_dt_2$cptable
+plotcp(model_dt_2)
+```
+
+From above plot, we can see when cp gets close to 0.01, the decision tree return a result with lowest cross validation error. But the problem is when we have a very small cp value, we might over fit our training data which will have low bias and higher variance when we use it to predict future data. Therefore, in the next step, we'll try to use bagging to reduct the varaince. 
+
+#### 3. Decision Tree with Bagging
+Let's use bagging method with decision tree. And use it to do the prediction with our testing data and see how accurate our model is. 
+
+We use train function from package "caret", and use 10-fold cross validation with function trainControl.
+```{r, cache=TRUE}
+ctrl<-trainControl("cv", number=10)
+set.seed(123)
+system.time(
+model_bagging_3<-train(
+  classe~., 
+  data=training,
+  method="treebag",
+  trControl=ctrl,
+  importance=TRUE,
+  metric="Accuracy"
+)
+)
+pred_bagging_3<-predict(model_bagging_3, testing)
+round(confusionMatrix(testing$classe, pred_bagging_3)$overall, 3)
+```
+
+So the bagging decision trees return us an accuracy rate around 99% which is a significant improvement comparing to previous single decision tree. But it does take a while to complete our model. What if we only use top 20 important predictors to construct our model? Will it be faster to complete our model, and will the accuracy rate decrease since we use less predictors? 
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+```{r, cache=TRUE}
+varImp<-varImp(model_bagging_3)$importance %>% arrange(desc(Overall))
+top_20_predictors<-rownames(varImp)[1:20]
+training_trim<-training[, c(top_20_predictors, "classe")]
+```
+
+```{r, echo=FALSE, fig.height = 8, fig.width = 8, fig.align = "center"}
+varplotdf<-data.frame(Pred=top_20_predictors, Val=varImp$Overall[1:20])
+ggplot(varplotdf, aes(reorder(Pred, Val), y=Val, fill=Pred))+geom_col()+coord_flip()+theme(legend.position = "none")+labs(title="Predictors Importance Chart", x="Predictors", y="Values")
+```
+
+#### 4. Decision Tree with Bagging (top 20 variables)
+
+```{r}
+set.seed(123)
+system.time(
+model_bagging_4<-train(
+  classe~., 
+  data=training_trim,
+  method="treebag",
+  trControl=ctrl,
+  importance=TRUE,
+  metric="Accuracy"
+)
+)
+pred_bagging_4<-predict(model_bagging_4, testing)
+confusionMatrix(testing$classe, pred_bagging_4)$overall
+```
+
+We still manage to maintain around 99% accuracy rate, and improve the processing time. In other words, only using top 20 predictors doesn't sacrifice the model's accuracy rate. 
+
+#### 5. Random Forest with ranger
+Last, we'll try the random forest by using package ranger to see how the model performs. 
+
+```{r, message=FALSE}
+library(ranger)
+```
+
+```{r}
+system.time(
+model_rf_5<-ranger(classe~., data=training_trim)
+)
+pred_rf_5<-predict(model_rf_5, testing)
+round(confusionMatrix(testing$classe, pred_rf_5$predictions)$overall, 3)
+```
+
+So the random forest still provides a really good accuracy rate around 99% and the processing time is even shorter than using decision tree with bagging. 
+
+## 4. Apply selected models with test data set
+Here, we'll use our best model "model_rf_5" to make predictions with our test data set. 
+```{r}
+pred_final<-predict(model_rf_5, test.data)
+pred_final$predictions
+```
+
+
+
+
+
+
+
+
+
