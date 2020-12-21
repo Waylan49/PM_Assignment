@@ -371,7 +371,7 @@ summary {
 <div id="getting-data-and-data-pre-processing" class="section level2">
 <h2>1. Getting data and data pre-processing</h2>
 <p>First, we need to set the working directory and read the training data into our R.</p>
-<pre class="r"><code>setwd(&quot;C:/Users/Waylan/Desktop/ML_FP&quot;)
+<pre class="r"><code>setwd(&quot;C:/Users/Waylan/Documents/ML_FP&quot;)
 original.train.data&lt;-read.csv(&quot;pml-training.csv&quot;)</code></pre>
 <p>After reading the training data, we find there are several predictors with NA value, and some character varaibel we’d prefer it to be factor variable, so we use below code to pre-process it.</p>
 <pre class="r"><code>isna_logic&lt;-sapply(original.train.data, anyNA)
@@ -512,7 +512,23 @@ model_bagging_4&lt;-train(
 )
 )</code></pre>
 <pre><code>##    user  system elapsed 
-##  136.94    0.91  138.07</code></pre>
+##  135.27    0.76  136.36</code></pre>
+<pre class="r"><code>model_bagging_4$resample</code></pre>
+<pre><code>##     Accuracy     Kappa Resample
+## 1  0.9987261 0.9983886   Fold01
+## 2  0.9993635 0.9991949   Fold02
+## 3  0.9993631 0.9991944   Fold03
+## 4  0.9974506 0.9967756   Fold04
+## 5  0.9987261 0.9983888   Fold05
+## 6  0.9987261 0.9983889   Fold06
+## 7  0.9980880 0.9975817   Fold07
+## 8  0.9980892 0.9975830   Fold08
+## 9  0.9974539 0.9967801   Fold09
+## 10 1.0000000 1.0000000   Fold10</code></pre>
+<pre class="r"><code>model_bagging_4$results</code></pre>
+<pre><code>##   parameter  Accuracy     Kappa  AccuracySD     KappaSD
+## 1      none 0.9985986 0.9982276 0.000838698 0.001060711</code></pre>
+<p>From above, we can see the cross validation accuracy is around 99%. Let’s try it with our testing data set.</p>
 <pre class="r"><code>pred_bagging_4&lt;-predict(model_bagging_4, testing)
 confusionMatrix(testing$classe, pred_bagging_4)$overall</code></pre>
 <pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
@@ -529,7 +545,7 @@ confusionMatrix(testing$classe, pred_bagging_4)$overall</code></pre>
 model_rf_5&lt;-ranger(classe~., data=training_trim)
 )</code></pre>
 <pre><code>##    user  system elapsed 
-##   46.86    0.31    5.32</code></pre>
+##   47.32    0.33    5.19</code></pre>
 <pre class="r"><code>pred_rf_5&lt;-predict(model_rf_5, testing)
 round(confusionMatrix(testing$classe, pred_rf_5$predictions)$overall, 3)</code></pre>
 <pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 

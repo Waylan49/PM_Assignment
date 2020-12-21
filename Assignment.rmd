@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 First, we need to set the working directory and read the training data into our R. 
 ```{r}
-setwd("C:/Users/Waylan/Desktop/ML_FP")
+setwd("C:/Users/Waylan/Documents/ML_FP")
 original.train.data<-read.csv("pml-training.csv")
 ```
 
@@ -152,6 +152,12 @@ model_bagging_4<-train(
   metric="Accuracy"
 )
 )
+model_bagging_4$resample
+model_bagging_4$results
+```
+
+From above, we can see the cross validation accuracy is around 99%. Let's try it with our testing data set.
+```{r}
 pred_bagging_4<-predict(model_bagging_4, testing)
 confusionMatrix(testing$classe, pred_bagging_4)$overall
 ```
