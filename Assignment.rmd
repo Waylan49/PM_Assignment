@@ -140,7 +140,7 @@ ggplot(varplotdf, aes(reorder(Pred, Val), y=Val, fill=Pred))+geom_col()+coord_fl
 
 #### 4. Decision Tree with Bagging (top 20 variables)
 
-```{r}
+```{r cache=TRUE}
 set.seed(123)
 system.time(
 model_bagging_4<-train(
@@ -156,7 +156,8 @@ model_bagging_4$resample
 model_bagging_4$results
 ```
 
-From above, we can see the cross validation accuracy is around 99%. Let's try it with our testing data set.
+From above, we can see the cross validation accuracy is around 99% which indicating only 1% **out of bag error rate**. 
+Let's try it with our testing data set.
 ```{r}
 pred_bagging_4<-predict(model_bagging_4, testing)
 confusionMatrix(testing$classe, pred_bagging_4)$overall
@@ -171,10 +172,15 @@ Last, we'll try the random forest by using package ranger to see how the model p
 library(ranger)
 ```
 
-```{r}
+```{r, cache=TRUE}
 system.time(
 model_rf_5<-ranger(classe~., data=training_trim)
 )
+model_rf_5
+```
+Based on above result, we have only 0.05% **out of bag error rate** which is extremely small 
+
+```{r}
 pred_rf_5<-predict(model_rf_5, testing)
 round(confusionMatrix(testing$classe, pred_rf_5$predictions)$overall, 3)
 ```

@@ -512,7 +512,7 @@ model_bagging_4&lt;-train(
 )
 )</code></pre>
 <pre><code>##    user  system elapsed 
-##  135.27    0.76  136.36</code></pre>
+##  136.88    0.80  137.71</code></pre>
 <pre class="r"><code>model_bagging_4$resample</code></pre>
 <pre><code>##     Accuracy     Kappa Resample
 ## 1  0.9987261 0.9983886   Fold01
@@ -528,7 +528,7 @@ model_bagging_4&lt;-train(
 <pre class="r"><code>model_bagging_4$results</code></pre>
 <pre><code>##   parameter  Accuracy     Kappa  AccuracySD     KappaSD
 ## 1      none 0.9985986 0.9982276 0.000838698 0.001060711</code></pre>
-<p>From above, we can see the cross validation accuracy is around 99%. Let’s try it with our testing data set.</p>
+<p>From above, we can see the cross validation accuracy is around 99% which indicating only 1% <strong>out of bag error rate</strong>. Let’s try it with our testing data set.</p>
 <pre class="r"><code>pred_bagging_4&lt;-predict(model_bagging_4, testing)
 confusionMatrix(testing$classe, pred_bagging_4)$overall</code></pre>
 <pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
@@ -545,7 +545,23 @@ confusionMatrix(testing$classe, pred_bagging_4)$overall</code></pre>
 model_rf_5&lt;-ranger(classe~., data=training_trim)
 )</code></pre>
 <pre><code>##    user  system elapsed 
-##   47.32    0.33    5.19</code></pre>
+##   46.11    0.25    5.22</code></pre>
+<pre class="r"><code>model_rf_5</code></pre>
+<pre><code>## Ranger result
+## 
+## Call:
+##  ranger(classe ~ ., data = training_trim) 
+## 
+## Type:                             Classification 
+## Number of trees:                  500 
+## Sample size:                      15699 
+## Number of independent variables:  20 
+## Mtry:                             4 
+## Target node size:                 1 
+## Variable importance mode:         none 
+## Splitrule:                        gini 
+## OOB prediction error:             0.05 %</code></pre>
+<p>Based on above result, we have only 0.05% <strong>out of bag error rate</strong> which is extremely small</p>
 <pre class="r"><code>pred_rf_5&lt;-predict(model_rf_5, testing)
 round(confusionMatrix(testing$classe, pred_rf_5$predictions)$overall, 3)</code></pre>
 <pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
